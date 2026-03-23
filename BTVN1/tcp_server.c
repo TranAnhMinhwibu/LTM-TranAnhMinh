@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 #define BUFFER_SIZE 1024
 
@@ -11,7 +12,7 @@ int main(int argc, char *argv[]) {
         printf("Using: %s <Port> <Hello Message> <data file>\n", argv[0]);
         exit(1);
     }
-
+    signal(SIGCHLD, SIG_IGN);
     int server_port = atoi(argv[1]);
     char *greeting_file = argv[2];
     char *output_file = argv[3];
@@ -64,24 +65,37 @@ int main(int argc, char *argv[]) {
 
         printf("\n[+] Client connected with IP: %s\n", inet_ntoa(client_addr.sin_addr));
 
-        send(client_sock, greeting, strlen(greeting), 0);
+        pid_t pid = fork();
 
-        FILE *f_out = fopen(output_file, "a");
-        if (!f_out) {
-            perror("Error: Cannot open data file");
+        if (pid == 0) {
+            close(server_sock);
+            send(client_sock, greeting, strlen(greeting), 0);
+
+            FILE *f_out = fopen(output_file, "a");
+            if (!f_out) {
+                perror("Error: Cannot open data file");
+                close(client_sock);
+                exit(1);
+            }
+
+            int bytes_received;
+            while ((bytes_received = recv(client_sock, buffer, BUFFER_SIZE, 0)) > 0) {
+                fwrite(buffer, 1, bytes_received, f_out);
+                fflush(f_out);
+            }
+
+            printf("[-] Client %s disconnected. data saved to '%s'.\n", inet_ntoa(client_addr.sin_addr), output_file);
+            fclose(f_out);
             close(client_sock);
-            continue;
+            
+            exit(0);
+            
+        } else if (pid > 0) {
+            close(client_sock); 
+        } else {
+            perror("Fork failed");
+            close(client_sock);
         }
-
-        int bytes_received;
-        while ((bytes_received = recv(client_sock, buffer, BUFFER_SIZE, 0)) > 0) {
-            fwrite(buffer, 1, bytes_received, f_out);
-            fflush(f_out);
-        }
-
-        printf("[-] Client disconnected. data saved to '%s'.\n", output_file);
-        fclose(f_out);
-        close(client_sock);
     }
 
     close(server_sock);

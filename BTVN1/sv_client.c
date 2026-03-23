@@ -20,7 +20,7 @@ void remove_newline(char *str) {
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf("Sử dụng: %s <Địa chỉ IP> <Cổng>\n", argv[0]);
+        printf("Usage: %s <Server IP> <Port>\n", argv[0]);
         exit(1);
     }
 
@@ -31,62 +31,52 @@ int main(int argc, char *argv[]) {
 
     client_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (client_sock < 0) {
-        perror("Lỗi tạo socket");
+        perror("Socket creation failed");
         exit(1);
     }
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(server_port);
     if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
-        printf("Địa chỉ IP không hợp lệ!\n");
-        close(client_sock);
+        printf("Invalid IP address\n");
         exit(1);
     }
 
     if (connect(client_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Kết nối tới server thất bại");
-        close(client_sock);
+        perror("Connection failed");
         exit(1);
     }
 
-    printf("Đã kết nối tới Server %s:%d thành công!\n", server_ip, server_port);
-    printf("--- NHẬP THÔNG TIN SINH VIÊN (Nhấn Enter ở MSSV để thoát) ---\n");
+    printf("Connected to server %s:%d\n", server_ip, server_port);
+    printf("Enter student information (Leave Student ID empty to exit):\n");
 
     SinhVien sv;
-    char buffer[100];
+    char buffer[50];
 
     while (1) {
-        printf("\n1. MSSV: ");
+        printf("Student ID: ");
         fgets(sv.mssv, sizeof(sv.mssv), stdin);
         remove_newline(sv.mssv);
+        if (strlen(sv.mssv) == 0) break;
 
-        if (strlen(sv.mssv) == 0) {
-            printf("Kết thúc quá trình nhập.\n");
-            break;
-        }
-
-        printf("2. Họ và tên: ");
+        printf("Name: ");
         fgets(sv.ho_ten, sizeof(sv.ho_ten), stdin);
         remove_newline(sv.ho_ten);
 
-        printf("3. Ngày sinh (DD/MM/YYYY): ");
+        printf("DOB (YYYY-MM-DD): ");
         fgets(sv.ngay_sinh, sizeof(sv.ngay_sinh), stdin);
         remove_newline(sv.ngay_sinh);
 
-        printf("4. Điểm trung bình: ");
+        printf("GPA: ");
         fgets(buffer, sizeof(buffer), stdin);
         sv.diem_tb = atof(buffer);
 
-        int bytes_sent = send(client_sock, &sv, sizeof(SinhVien), 0);
-        if (bytes_sent < 0) {
-            perror("Lỗi khi gửi dữ liệu");
+        if (send(client_sock, &sv, sizeof(SinhVien), 0) < 0) {
+            perror("Send failed");
             break;
         }
-        
-        printf("-> Đã đóng gói và gửi thông tin sinh viên '%s' tới Server!\n", sv.mssv);
     }
 
     close(client_sock);
-    printf("Đã đóng kết nối.\n");
     return 0;
 }
