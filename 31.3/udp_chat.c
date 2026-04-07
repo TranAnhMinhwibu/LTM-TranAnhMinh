@@ -11,7 +11,6 @@
 int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Usage: %s <port_s> <ip_d> <port_d>\n", argv[0]);
-        printf("Example: %s 8080 127.0.0.1 9090\n", argv[0]);
         return 1;
     }
 
@@ -48,11 +47,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("=== UDP CHAT ===\n");
+
     printf("- Listening on port: %d\n", port_s);
     printf("- Ready to send to IP: %s, Port: %d\n", ip_d, port_d);
-    printf("----------------------------------------\n");
-    printf("Type a message and press Enter to send (Type 'exit' to quit)...\n\n");
 
     fd_set readfds;
     int max_fd = sockfd > STDIN_FILENO ? sockfd : STDIN_FILENO;
